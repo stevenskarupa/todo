@@ -110,6 +110,12 @@
               "LogGroupName": "/aws/lambda/todo-dev-create"
             }
           },
+          "ListLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/todo-dev-list"
+            }
+          },
           "IamRoleLambdaExecution": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -197,7 +203,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/todo/dev/1644952030203-2022-02-15T19:07:10.203Z/todo.zip"
+                "S3Key": "serverless/todo/dev/1644955778254-2022-02-15T20:09:38.254Z/todo.zip"
               },
               "Handler": "todos/create.create",
               "Runtime": "python3.8",
@@ -220,14 +226,54 @@
               "CreateLogGroup"
             ]
           },
-          "CreateLambdaVersionrmhN5vW9VOMtAUVZnQg1RiNBwnUxHEwq7tSB4lfobE": {
+          "ListLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/todo/dev/1644955778254-2022-02-15T20:09:38.254Z/todo.zip"
+              },
+              "Handler": "todos/list.list",
+              "Runtime": "python3.8",
+              "FunctionName": "todo-dev-list",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE": "todo-dev"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ListLogGroup"
+            ]
+          },
+          "CreateLambdaVersiondi9KMoXpEccLOaAF7zpfILenQnXfkHN1dt02Pv4p20": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "CreateLambdaFunction"
               },
-              "CodeSha256": "sF1uZ0YRfXSPIwCbAaMeoEt9tmCWYGuKno+P4a6AvVI="
+              "CodeSha256": "14D1IcTJ7qmqde9Cy3y1Jv19KatxHF6fqsy9SSMreLE="
+            }
+          },
+          "ListLambdaVersionn4OaFye0YASOwA6i1GDE3D03QozA1fYElH2ZAQDhcL0": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ListLambdaFunction"
+              },
+              "CodeSha256": "14D1IcTJ7qmqde9Cy3y1Jv19KatxHF6fqsy9SSMreLE="
             }
           },
           "ApiGatewayRestApi": {
@@ -286,7 +332,7 @@
                     "ResponseParameters": {
                       "method.response.header.Access-Control-Allow-Origin": "'*'",
                       "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
-                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'"
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,POST'"
                     },
                     "ResponseTemplates": {
                       "application/json": ""
@@ -348,7 +394,53 @@
               "CreateLambdaPermissionApiGateway"
             ]
           },
-          "ApiGatewayDeployment1644952029727": {
+          "ApiGatewayMethodTodosGet": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "GET",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceTodos"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "ListLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "ListLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayDeployment1644955777731": {
             "Type": "AWS::ApiGateway::Deployment",
             "Properties": {
               "RestApiId": {
@@ -358,7 +450,8 @@
             },
             "DependsOn": [
               "ApiGatewayMethodTodosOptions",
-              "ApiGatewayMethodTodosPost"
+              "ApiGatewayMethodTodosPost",
+              "ApiGatewayMethodTodosGet"
             ]
           },
           "CreateLambdaPermissionApiGateway": {
@@ -367,6 +460,43 @@
               "FunctionName": {
                 "Fn::GetAtt": [
                   "CreateLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "ListLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ListLambdaFunction",
                   "Arn"
                 ]
               },
@@ -434,10 +564,19 @@
           "CreateLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "CreateLambdaVersionrmhN5vW9VOMtAUVZnQg1RiNBwnUxHEwq7tSB4lfobE"
+              "Ref": "CreateLambdaVersiondi9KMoXpEccLOaAF7zpfILenQnXfkHN1dt02Pv4p20"
             },
             "Export": {
               "Name": "sls-todo-dev-CreateLambdaFunctionQualifiedArn"
+            }
+          },
+          "ListLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ListLambdaVersionn4OaFye0YASOwA6i1GDE3D03QozA1fYElH2ZAQDhcL0"
+            },
+            "Export": {
+              "Name": "sls-todo-dev-ListLambdaFunctionQualifiedArn"
             }
           },
           "ServiceEndpoint": {
@@ -587,7 +726,42 @@
         "timeout": 6,
         "runtime": "python3.8",
         "vpc": {},
-        "versionLogicalId": "CreateLambdaVersionrmhN5vW9VOMtAUVZnQg1RiNBwnUxHEwq7tSB4lfobE"
+        "versionLogicalId": "CreateLambdaVersiondi9KMoXpEccLOaAF7zpfILenQnXfkHN1dt02Pv4p20"
+      },
+      "list": {
+        "handler": "todos/list.list",
+        "events": [
+          {
+            "http": {
+              "path": "todos",
+              "method": "get",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "GET"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token",
+                  "X-Amz-User-Agent"
+                ],
+                "allowCredentials": false
+              },
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "name": "todo-dev-list",
+        "package": {},
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "python3.8",
+        "vpc": {},
+        "versionLogicalId": "ListLambdaVersionn4OaFye0YASOwA6i1GDE3D03QozA1fYElH2ZAQDhcL0"
       }
     },
     "resources": {
@@ -638,7 +812,7 @@
     "artifact": "/Users/steveskarupa/poc/todo/.serverless/todo.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/todo/dev/1644952030203-2022-02-15T19:07:10.203Z",
+    "artifactDirectoryName": "serverless/todo/dev/1644955778254-2022-02-15T20:09:38.254Z",
     "artifact": "todo.zip"
   }
 }

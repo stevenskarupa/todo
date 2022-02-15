@@ -18,7 +18,7 @@ def create(event, context):
     table = dynamodb.Table(os.environ['DYNAMODB_TABLE'])
 
     item = {
-      'id': str(uuid.uuid1),
+      'id': str(uuid.uuid1()),
       'text': data['text'],
       'checked': False,
       'createdAt': timestamp,
