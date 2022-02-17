@@ -9,7 +9,7 @@ dynamodb = boto3.resource('dynamodb')
 
 def create(event, context):
     data = json.loads(event['body'])
-    if 'text' not in data:
+    if 'todo' not in data:
         logging.error("validation failed")
         raise Exception("Couldn't create the todo item")
       
@@ -19,7 +19,7 @@ def create(event, context):
 
     item = {
       'id': str(uuid.uuid1()),
-      'text': data['text'],
+      'todo': data['todo'],
       'checked': False,
       'createdAt': timestamp,
       'updatedAt': timestamp,
